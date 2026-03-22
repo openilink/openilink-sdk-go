@@ -53,12 +53,34 @@ func sleepCtx(ctx context.Context, d time.Duration) {
 	}
 }
 
-// ExtractText returns the first text body from a message's item list.
-// Returns an empty string if no text item is found.
+// ExtractText returns the text body from a message's item list.
+//
+// It handles three cases in priority order:
+//  1. A text item with an optional quoted/referenced message prefix
+//  2. A voice item with speech-to-text transcription
+//  3. Empty string if neither is found
 func ExtractText(msg *WeixinMessage) string {
 	for _, item := range msg.ItemList {
 		if item.Type == ItemText && item.TextItem != nil {
-			return item.TextItem.Text
+			text := item.TextItem.Text
+			// Prepend quoted message context if present and not a media ref
+			if ref := item.RefMsg; ref != nil && ref.MessageItem != nil && !IsMediaItem(ref.MessageItem) {
+				refBody := ""
+				if ref.MessageItem.TextItem != nil {
+					refBody = ref.MessageItem.TextItem.Text
+				}
+				title := ref.Title
+				if title != "" || refBody != "" {
+					text = "[引用: " + title + " | " + refBody + "]\n" + text
+				}
+			}
+			return text
+		}
+	}
+	// Fallback: voice-to-text transcription
+	for _, item := range msg.ItemList {
+		if item.Type == ItemVoice && item.VoiceItem != nil && item.VoiceItem.Text != "" {
+			return item.VoiceItem.Text
 		}
 	}
 	return ""
