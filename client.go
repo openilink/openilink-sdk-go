@@ -54,13 +54,14 @@ func WithRouteTag(tag string) Option { return func(c *Client) { c.routeTag = tag
 
 // Client communicates with the Weixin iLink Bot API.
 type Client struct {
-	baseURL    string
-	cdnBaseURL string
-	token      string
-	botType    string
-	version    string
-	routeTag   string
-	httpClient HTTPDoer
+	baseURL     string
+	cdnBaseURL  string
+	token       string
+	botType     string
+	version     string
+	routeTag    string
+	httpClient  HTTPDoer
+	silkDecoder SILKDecoder
 
 	contextTokens sync.Map // map[userID]contextToken
 }
