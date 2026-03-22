@@ -158,7 +158,7 @@ func (c *Client) doPost(ctx context.Context, endpoint string, body any, timeout 
 	if err != nil {
 		return nil, fmt.Errorf("ilink: read response: %w", err)
 	}
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: respBody}
 	}
 	return respBody, nil
@@ -186,7 +186,7 @@ func (c *Client) doGet(ctx context.Context, rawURL string, extraHeaders map[stri
 	if err != nil {
 		return nil, fmt.Errorf("ilink: read response: %w", err)
 	}
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: body}
 	}
 	return body, nil
@@ -215,7 +215,7 @@ func (c *Client) GetUpdates(ctx context.Context, getUpdatesBuf string, timeoutMs
 		// Only treat deadline-exceeded (client-side timeout) as a normal
 		// empty poll; propagate real network errors to the caller.
 		if isTimeoutError(err) {
-			return &GetUpdatesResp{Ret: 0, GetUpdatesBuf: getUpdatesBuf}, nil
+			return &GetUpdatesResp{Ret: 0, Msgs: []WeixinMessage{}, GetUpdatesBuf: getUpdatesBuf}, nil
 		}
 		return nil, err
 	}

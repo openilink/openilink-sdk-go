@@ -157,7 +157,7 @@ type MessageItem struct {
 type WeixinMessage struct {
 	Seq          int64         `json:"seq,omitempty"`
 	MessageID    int64         `json:"message_id,omitempty"`
-	FromUserID   string        `json:"from_user_id,omitempty"`
+	FromUserID   string        `json:"from_user_id"`
 	ToUserID     string        `json:"to_user_id,omitempty"`
 	ClientID     string        `json:"client_id,omitempty"`
 	CreateTimeMs int64         `json:"create_time_ms,omitempty"`

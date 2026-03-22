@@ -127,13 +127,20 @@ func isHex(b []byte) bool {
 	return true
 }
 
-// decodeBase64Flexible tries standard base64 then URL-safe base64.
+// decodeBase64Flexible decodes base64 with support for both standard and
+// URL-safe alphabets, with or without padding.
 func decodeBase64Flexible(s string) ([]byte, error) {
-	b, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		return base64.URLEncoding.DecodeString(s)
+	for _, enc := range []*base64.Encoding{
+		base64.StdEncoding,
+		base64.RawStdEncoding,
+		base64.URLEncoding,
+		base64.RawURLEncoding,
+	} {
+		if b, err := enc.DecodeString(s); err == nil {
+			return b, nil
+		}
 	}
-	return b, nil
+	return nil, fmt.Errorf("invalid base64: %q", s)
 }
 
 // --- CDN upload / download ---
