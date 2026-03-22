@@ -128,7 +128,7 @@ func (c *Client) routeTagHeaders() map[string]string {
 	return h
 }
 
-func (c *Client) doPost(ctx context.Context, endpoint string, body any, timeout time.Duration) ([]byte, error) {
+func (c *Client) doPost(ctx context.Context, endpoint string, body any, timeout time.Duration) (*APIResponse, error) {
 	data, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: marshal request: %w", err)
@@ -159,13 +159,14 @@ func (c *Client) doPost(ctx context.Context, endpoint string, body any, timeout 
 	if err != nil {
 		return nil, fmt.Errorf("ilink: read response: %w", err)
 	}
+	apiResp := &APIResponse{StatusCode: resp.StatusCode, Header: resp.Header, Body: respBody}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: respBody}
+		return apiResp, &HTTPError{StatusCode: resp.StatusCode, Body: respBody}
 	}
-	return respBody, nil
+	return apiResp, nil
 }
 
-func (c *Client) doGet(ctx context.Context, rawURL string, extraHeaders map[string]string, timeout time.Duration) ([]byte, error) {
+func (c *Client) doGet(ctx context.Context, rawURL string, extraHeaders map[string]string, timeout time.Duration) (*APIResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -187,10 +188,11 @@ func (c *Client) doGet(ctx context.Context, rawURL string, extraHeaders map[stri
 	if err != nil {
 		return nil, fmt.Errorf("ilink: read response: %w", err)
 	}
+	apiResp := &APIResponse{StatusCode: resp.StatusCode, Header: resp.Header, Body: body}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: body}
+		return apiResp, &HTTPError{StatusCode: resp.StatusCode, Body: body}
 	}
-	return body, nil
+	return apiResp, nil
 }
 
 // --- API methods ---
@@ -208,13 +210,11 @@ func (c *Client) GetUpdates(ctx context.Context, getUpdatesBuf string, timeoutMs
 		timeout = time.Duration(timeoutMs[0]) * time.Millisecond
 	}
 
-	data, err := c.doPost(ctx, "ilink/bot/getupdates", reqBody, timeout)
+	apiResp, err := c.doPost(ctx, "ilink/bot/getupdates", reqBody, timeout)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		// Only treat deadline-exceeded (client-side timeout) as a normal
-		// empty poll; propagate real network errors to the caller.
 		if isTimeoutError(err) {
 			return &GetUpdatesResp{Ret: 0, Msgs: []WeixinMessage{}, GetUpdatesBuf: getUpdatesBuf}, nil
 		}
@@ -222,9 +222,10 @@ func (c *Client) GetUpdates(ctx context.Context, getUpdatesBuf string, timeoutMs
 	}
 
 	var resp GetUpdatesResp
-	if err := json.Unmarshal(data, &resp); err != nil {
+	if err := json.Unmarshal(apiResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("ilink: unmarshal getUpdates: %w", err)
 	}
+	resp.setRawResponse(apiResp)
 	return &resp, nil
 }
 
@@ -264,14 +265,15 @@ func (c *Client) GetConfig(ctx context.Context, userID, contextToken string) (*G
 		ContextToken: contextToken,
 		BaseInfo:     c.buildBaseInfo(),
 	}
-	data, err := c.doPost(ctx, "ilink/bot/getconfig", reqBody, defaultConfigTimeout)
+	apiResp, err := c.doPost(ctx, "ilink/bot/getconfig", reqBody, defaultConfigTimeout)
 	if err != nil {
 		return nil, err
 	}
 	var resp GetConfigResp
-	if err := json.Unmarshal(data, &resp); err != nil {
+	if err := json.Unmarshal(apiResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("ilink: unmarshal getConfig: %w", err)
 	}
+	resp.setRawResponse(apiResp)
 	return &resp, nil
 }
 
@@ -290,14 +292,15 @@ func (c *Client) SendTyping(ctx context.Context, userID, typingTicket string, st
 // GetUploadURL requests a pre-signed CDN upload URL.
 func (c *Client) GetUploadURL(ctx context.Context, req *GetUploadURLReq) (*GetUploadURLResp, error) {
 	req.BaseInfo = c.buildBaseInfo()
-	data, err := c.doPost(ctx, "ilink/bot/getuploadurl", req, defaultAPITimeout)
+	apiResp, err := c.doPost(ctx, "ilink/bot/getuploadurl", req, defaultAPITimeout)
 	if err != nil {
 		return nil, err
 	}
 	var resp GetUploadURLResp
-	if err := json.Unmarshal(data, &resp); err != nil {
+	if err := json.Unmarshal(apiResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("ilink: unmarshal getUploadUrl: %w", err)
 	}
+	resp.setRawResponse(apiResp)
 	return &resp, nil
 }
 

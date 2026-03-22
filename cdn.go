@@ -274,12 +274,12 @@ func (c *Client) DownloadFile(ctx context.Context, encryptedQueryParam, aesKeyBa
 	}
 
 	dlURL := BuildCDNDownloadURL(c.cdnBaseURL, encryptedQueryParam)
-	ciphertext, err := c.doGet(ctx, dlURL, nil, defaultCDNTimeout)
+	apiResp, err := c.doGet(ctx, dlURL, nil, defaultCDNTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: cdn download: %w", err)
 	}
 
-	plaintext, err := DecryptAESECB(ciphertext, key)
+	plaintext, err := DecryptAESECB(apiResp.Body, key)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: cdn decrypt: %w", err)
 	}
@@ -289,11 +289,11 @@ func (c *Client) DownloadFile(ctx context.Context, encryptedQueryParam, aesKeyBa
 // DownloadRaw downloads raw bytes from the CDN without decryption.
 func (c *Client) DownloadRaw(ctx context.Context, encryptedQueryParam string) ([]byte, error) {
 	dlURL := BuildCDNDownloadURL(c.cdnBaseURL, encryptedQueryParam)
-	data, err := c.doGet(ctx, dlURL, nil, defaultCDNTimeout)
+	apiResp, err := c.doGet(ctx, dlURL, nil, defaultCDNTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: cdn download: %w", err)
 	}
-	return data, nil
+	return apiResp.Body, nil
 }
 
 func randomHex(n int) string {

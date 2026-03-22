@@ -41,7 +41,7 @@ func (c *Client) SendImage(ctx context.Context, to, contextToken string, uploade
 						Media: &CDNMedia{
 							EncryptQueryParam: uploaded.DownloadEncryptedQueryParam,
 							AESKey:            mediaAESKey(uploaded.AESKey),
-							EncryptType:       1,
+							EncryptType:       EncryptAES128ECB,
 						},
 						MidSize: uploaded.CiphertextSize,
 					},
@@ -73,7 +73,7 @@ func (c *Client) SendVideo(ctx context.Context, to, contextToken string, uploade
 						Media: &CDNMedia{
 							EncryptQueryParam: uploaded.DownloadEncryptedQueryParam,
 							AESKey:            mediaAESKey(uploaded.AESKey),
-							EncryptType:       1,
+							EncryptType:       EncryptAES128ECB,
 						},
 						VideoSize: uploaded.CiphertextSize,
 					},
@@ -105,7 +105,7 @@ func (c *Client) SendFileAttachment(ctx context.Context, to, contextToken, fileN
 						Media: &CDNMedia{
 							EncryptQueryParam: uploaded.DownloadEncryptedQueryParam,
 							AESKey:            mediaAESKey(uploaded.AESKey),
-							EncryptType:       1,
+							EncryptType:       EncryptAES128ECB,
 						},
 						FileName: fileName,
 						Len:      fmt.Sprintf("%d", uploaded.FileSize),

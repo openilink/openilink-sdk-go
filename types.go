@@ -1,5 +1,30 @@
 package ilink
 
+import "net/http"
+
+// APIResponse holds the raw HTTP response metadata from an API call.
+// Access it via the LastResponse() method on any parsed response type.
+type APIResponse struct {
+	// StatusCode is the HTTP status code.
+	StatusCode int
+	// Header contains the HTTP response headers.
+	Header http.Header
+	// Body is the raw response body bytes.
+	Body []byte
+}
+
+// rawResponse is embedded in parsed response types to carry the raw HTTP response.
+type rawResponse struct {
+	apiResponse *APIResponse
+}
+
+// RawResponse returns the underlying HTTP response (status, headers, body)
+// from the API call that produced this value.
+// Returns nil for synthetic responses (e.g. long-poll timeout).
+func (r *rawResponse) RawResponse() *APIResponse { return r.apiResponse }
+
+func (r *rawResponse) setRawResponse(resp *APIResponse) { r.apiResponse = resp }
+
 // BaseInfo is attached to every outgoing API request.
 type BaseInfo struct {
 	ChannelVersion string `json:"channel_version,omitempty"`
@@ -33,6 +58,7 @@ type GetUploadURLReq struct {
 
 // GetUploadURLResp contains pre-signed upload parameters from the CDN.
 type GetUploadURLResp struct {
+	rawResponse
 	Ret              int    `json:"ret,omitempty"`
 	ErrMsg           string `json:"errmsg,omitempty"`
 	UploadParam      string `json:"upload_param,omitempty"`
@@ -75,6 +101,12 @@ type TypingStatus int
 const (
 	Typing       TypingStatus = 1
 	CancelTyping TypingStatus = 2
+)
+
+// EncryptType identifies the CDN encryption algorithm.
+const (
+	// EncryptAES128ECB is AES-128-ECB encryption, the only type currently used.
+	EncryptAES128ECB = 1
 )
 
 // CDNMedia is a reference to encrypted media on the Weixin CDN.
@@ -179,6 +211,7 @@ type GetUpdatesReq struct {
 
 // GetUpdatesResp is the response from the getUpdates endpoint.
 type GetUpdatesResp struct {
+	rawResponse
 	Ret                  int             `json:"ret,omitempty"`
 	ErrCode              int             `json:"errcode,omitempty"`
 	ErrMsg               string          `json:"errmsg,omitempty"`
@@ -210,6 +243,7 @@ type GetConfigReq struct {
 
 // GetConfigResp contains bot config including typing_ticket.
 type GetConfigResp struct {
+	rawResponse
 	Ret          int    `json:"ret,omitempty"`
 	ErrMsg       string `json:"errmsg,omitempty"`
 	TypingTicket string `json:"typing_ticket,omitempty"`
@@ -217,12 +251,14 @@ type GetConfigResp struct {
 
 // QRCodeResponse is returned when requesting a login QR code.
 type QRCodeResponse struct {
+	rawResponse
 	QRCode           string `json:"qrcode"`
 	QRCodeImgContent string `json:"qrcode_img_content"`
 }
 
 // QRStatusResponse is returned when polling QR code scan status.
 type QRStatusResponse struct {
+	rawResponse
 	Status      string `json:"status"` // wait, scaned, confirmed, expired
 	BotToken    string `json:"bot_token,omitempty"`
 	ILinkBotID  string `json:"ilink_bot_id,omitempty"`

@@ -25,15 +25,16 @@ func (c *Client) FetchQRCode(ctx context.Context) (*QRCodeResponse, error) {
 	u += "?bot_type=" + url.QueryEscape(botType)
 
 	headers := c.routeTagHeaders()
-	data, err := c.doGet(ctx, u, headers, 15*time.Second)
+	apiResp, err := c.doGet(ctx, u, headers, 15*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: fetch QR code: %w", err)
 	}
 
 	var resp QRCodeResponse
-	if err := json.Unmarshal(data, &resp); err != nil {
+	if err := json.Unmarshal(apiResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("ilink: unmarshal QR response: %w", err)
 	}
+	resp.setRawResponse(apiResp)
 	return &resp, nil
 }
 
@@ -46,12 +47,11 @@ func (c *Client) PollQRStatus(ctx context.Context, qrcode string) (*QRStatusResp
 	headers := c.routeTagHeaders()
 	headers["iLink-App-ClientVersion"] = "1"
 
-	data, err := c.doGet(ctx, u, headers, qrLongPollTimeout)
+	apiResp, err := c.doGet(ctx, u, headers, qrLongPollTimeout)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		// Only treat timeout as a normal "wait"; propagate real errors.
 		if isTimeoutError(err) {
 			return &QRStatusResponse{Status: "wait"}, nil
 		}
@@ -59,9 +59,10 @@ func (c *Client) PollQRStatus(ctx context.Context, qrcode string) (*QRStatusResp
 	}
 
 	var resp QRStatusResponse
-	if err := json.Unmarshal(data, &resp); err != nil {
+	if err := json.Unmarshal(apiResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("ilink: unmarshal QR status: %w", err)
 	}
+	resp.setRawResponse(apiResp)
 	return &resp, nil
 }
 
