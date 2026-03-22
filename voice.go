@@ -26,32 +26,39 @@ func WithSILKDecoder(dec SILKDecoder) Option { return func(c *Client) { c.silkDe
 const DefaultVoiceSampleRate = 24000
 
 // DownloadVoice downloads a voice message from CDN, decrypts it, decodes
-// the SILK audio, and returns a WAV file. Requires a SILK decoder to be
+// the audio, and returns a WAV file. Requires a SILK decoder to be
 // configured via [WithSILKDecoder].
 //
-// media is the CDNMedia field from [VoiceItem].
-func (c *Client) DownloadVoice(ctx context.Context, media *CDNMedia) ([]byte, error) {
+// The sample rate is read from voice.SampleRate; if zero, [DefaultVoiceSampleRate]
+// (24000) is used as fallback.
+func (c *Client) DownloadVoice(ctx context.Context, voice *VoiceItem) ([]byte, error) {
 	if c.silkDecoder == nil {
 		return nil, fmt.Errorf("ilink: no SILK decoder configured; use WithSILKDecoder")
 	}
-	if media == nil {
-		return nil, fmt.Errorf("ilink: voice media is nil")
+	if voice == nil || voice.Media == nil {
+		return nil, fmt.Errorf("ilink: voice item or media is nil")
 	}
 
 	// 1. Download and decrypt from CDN
-	silkData, err := c.DownloadFile(ctx, media.EncryptQueryParam, media.AESKey)
+	data, err := c.DownloadFile(ctx, voice.Media.EncryptQueryParam, voice.Media.AESKey)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: download voice: %w", err)
 	}
 
-	// 2. Decode SILK -> PCM
-	pcm, err := c.silkDecoder(silkData, DefaultVoiceSampleRate)
-	if err != nil {
-		return nil, fmt.Errorf("ilink: decode silk: %w", err)
+	// 2. Determine sample rate from VoiceItem, fallback to default
+	sampleRate := voice.SampleRate
+	if sampleRate <= 0 {
+		sampleRate = DefaultVoiceSampleRate
 	}
 
-	// 3. Wrap PCM in WAV container
-	return BuildWAV(pcm, DefaultVoiceSampleRate, 1, 16), nil
+	// 3. Decode -> PCM
+	pcm, err := c.silkDecoder(data, sampleRate)
+	if err != nil {
+		return nil, fmt.Errorf("ilink: decode voice: %w", err)
+	}
+
+	// 4. Wrap PCM in WAV container
+	return BuildWAV(pcm, sampleRate, 1, 16), nil
 }
 
 // BuildWAV wraps raw PCM data in a WAV container.

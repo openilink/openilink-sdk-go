@@ -217,6 +217,7 @@ type GetUpdatesResp struct {
 	ErrMsg               string          `json:"errmsg,omitempty"`
 	Msgs                 []WeixinMessage `json:"msgs,omitempty"`
 	GetUpdatesBuf        string          `json:"get_updates_buf,omitempty"`
+	SyncBuf              string          `json:"sync_buf,omitempty"`
 	LongPollingTimeoutMs int64           `json:"longpolling_timeout_ms,omitempty"`
 }
 

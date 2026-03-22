@@ -96,9 +96,19 @@ func TestBuildWAV_Stereo(t *testing.T) {
 
 func TestDownloadVoice_NoDecoder(t *testing.T) {
 	client := NewClient("token")
-	_, err := client.DownloadVoice(nil, &CDNMedia{})
+	_, err := client.DownloadVoice(nil, &VoiceItem{Media: &CDNMedia{}})
 	if err == nil {
 		t.Fatal("expected error without SILK decoder")
+	}
+}
+
+func TestDownloadVoice_NilVoiceItem(t *testing.T) {
+	client := NewClient("token", WithSILKDecoder(
+		func(data []byte, sr int) ([]byte, error) { return nil, nil },
+	))
+	_, err := client.DownloadVoice(nil, nil)
+	if err == nil {
+		t.Fatal("expected error for nil voice item")
 	}
 }
 
@@ -106,7 +116,7 @@ func TestDownloadVoice_NilMedia(t *testing.T) {
 	client := NewClient("token", WithSILKDecoder(
 		func(data []byte, sr int) ([]byte, error) { return nil, nil },
 	))
-	_, err := client.DownloadVoice(nil, nil)
+	_, err := client.DownloadVoice(nil, &VoiceItem{})
 	if err == nil {
 		t.Fatal("expected error for nil media")
 	}
