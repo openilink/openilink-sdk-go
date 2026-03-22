@@ -1,3 +1,3 @@
-module github.com/openilink/go-sdk
+module github.com/openilink/openilink-go-sdk
 
 go 1.22
