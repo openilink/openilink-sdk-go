@@ -74,7 +74,7 @@ func NewClient(token string, opts ...Option) *Client {
 		cdnBaseURL: DefaultCDNBaseURL,
 		token:      token,
 		botType:    DefaultBotType,
-		version:    "1.0.0",
+		version:    "1.0.2",
 		httpClient: &http.Client{},
 	}
 	for _, opt := range opts {

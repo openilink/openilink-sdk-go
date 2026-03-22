@@ -33,6 +33,8 @@ type GetUploadURLReq struct {
 
 // GetUploadURLResp contains pre-signed upload parameters from the CDN.
 type GetUploadURLResp struct {
+	Ret              int    `json:"ret,omitempty"`
+	ErrMsg           string `json:"errmsg,omitempty"`
 	UploadParam      string `json:"upload_param,omitempty"`
 	ThumbUploadParam string `json:"thumb_upload_param,omitempty"`
 }

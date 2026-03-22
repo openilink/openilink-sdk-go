@@ -80,7 +80,7 @@ func (c *Client) Monitor(ctx context.Context, handler MessageHandler, opts *Moni
 					opts.OnSessionExpired()
 				}
 				onError(apiErr)
-				sleepCtx(ctx, 5*time.Minute)
+				sleepCtx(ctx, 1*time.Hour)
 				continue
 			}
 

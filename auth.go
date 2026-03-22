@@ -63,8 +63,8 @@ func (c *Client) PollQRStatus(ctx context.Context, qrcode string) (*QRStatusResp
 
 // LoginCallbacks receives events during the QR login flow.
 type LoginCallbacks struct {
-	// OnQRCode is called when a QR code URL is ready for the user to scan.
-	OnQRCode func(qrcodeURL string)
+	// OnQRCode is called with the QR code image content for the user to scan.
+	OnQRCode func(qrcodeImgContent string)
 	// OnScanned is called once after the user scans the QR code.
 	OnScanned func()
 	// OnExpired is called when the QR code expires and a new one is fetched.
@@ -156,6 +156,6 @@ func (c *Client) LoginWithQR(ctx context.Context, cb *LoginCallbacks) (*LoginRes
 			}, nil
 		}
 
-		time.Sleep(1 * time.Second)
+		sleepCtx(ctx, 1*time.Second)
 	}
 }
