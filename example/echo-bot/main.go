@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	ilink "github.com/openilink/openilink-go-sdk"
+	ilink "github.com/openilink/openilink-sdk-go"
 )
 
 func main() {

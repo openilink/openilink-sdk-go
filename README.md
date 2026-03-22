@@ -3,7 +3,7 @@
 Go SDK for the [Weixin iLink Bot API](https://ilinkai.weixin.qq.com).
 
 ```
-go get github.com/openilink/openilink-go-sdk
+go get github.com/openilink/openilink-sdk-go
 ```
 
 ## Features
@@ -30,7 +30,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	ilink "github.com/openilink/openilink-go-sdk"
+	ilink "github.com/openilink/openilink-sdk-go"
 )
 
 func main() {
