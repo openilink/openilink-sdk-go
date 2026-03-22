@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -22,6 +23,12 @@ func randomWechatUIN() string {
 	_, _ = rand.Read(b)
 	n := binary.BigEndian.Uint32(b)
 	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d", n)))
+}
+
+func generateClientID() string {
+	b := make([]byte, 4)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("sdk-%d-%s", time.Now().UnixMilli(), hex.EncodeToString(b))
 }
 
 func sleepCtx(ctx context.Context, d time.Duration) {

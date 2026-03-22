@@ -24,7 +24,8 @@ func (c *Client) FetchQRCode(ctx context.Context) (*QRCodeResponse, error) {
 	u, _ := url.JoinPath(base, "ilink/bot/get_bot_qrcode")
 	u += "?bot_type=" + url.QueryEscape(botType)
 
-	data, err := c.doGet(ctx, u, nil, 15*time.Second)
+	headers := c.routeTagHeaders()
+	data, err := c.doGet(ctx, u, headers, 15*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: fetch QR code: %w", err)
 	}
@@ -42,9 +43,8 @@ func (c *Client) PollQRStatus(ctx context.Context, qrcode string) (*QRStatusResp
 	u, _ := url.JoinPath(base, "ilink/bot/get_qrcode_status")
 	u += "?qrcode=" + url.QueryEscape(qrcode)
 
-	headers := map[string]string{
-		"iLink-App-ClientVersion": "1",
-	}
+	headers := c.routeTagHeaders()
+	headers["iLink-App-ClientVersion"] = "1"
 
 	data, err := c.doGet(ctx, u, headers, qrLongPollTimeout+5*time.Second)
 	if err != nil {

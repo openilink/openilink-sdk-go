@@ -47,6 +47,7 @@ func (c *Client) Monitor(ctx context.Context, handler MessageHandler, opts *Moni
 
 	buf := opts.InitialBuf
 	failures := 0
+	var nextTimeoutMs int64
 
 	for {
 		select {
@@ -55,7 +56,7 @@ func (c *Client) Monitor(ctx context.Context, handler MessageHandler, opts *Moni
 		default:
 		}
 
-		resp, err := c.GetUpdates(ctx, buf)
+		resp, err := c.GetUpdates(ctx, buf, nextTimeoutMs)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -96,6 +97,11 @@ func (c *Client) Monitor(ctx context.Context, handler MessageHandler, opts *Moni
 		}
 
 		failures = 0
+
+		// Update long-poll timeout if server suggests a new value
+		if resp.LongPollingTimeoutMs > 0 {
+			nextTimeoutMs = resp.LongPollingTimeoutMs
+		}
 
 		// Update sync cursor
 		if resp.GetUpdatesBuf != "" {

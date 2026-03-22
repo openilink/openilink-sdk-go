@@ -16,8 +16,8 @@ func main() {
 
 	fmt.Println("Fetching QR code...")
 	result, err := client.LoginWithQR(context.Background(), &ilink.LoginCallbacks{
-		OnQRCode: func(url string) {
-			fmt.Printf("\nScan QR code with WeChat:\n%s\n\n", url)
+		OnQRCode: func(imgContent string) {
+			fmt.Printf("\nScan QR code with WeChat:\n%s\n\n", imgContent)
 		},
 		OnScanned: func() {
 			fmt.Println("Scanned, confirm on WeChat...")

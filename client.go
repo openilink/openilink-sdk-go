@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -48,6 +49,9 @@ func WithBotType(t string) Option { return func(c *Client) { c.botType = t } }
 // WithVersion sets the channel_version sent in base_info.
 func WithVersion(v string) Option { return func(c *Client) { c.version = v } }
 
+// WithRouteTag sets the SKRouteTag header sent with every request.
+func WithRouteTag(tag string) Option { return func(c *Client) { c.routeTag = tag } }
+
 // Client communicates with the Weixin iLink Bot API.
 type Client struct {
 	baseURL    string
@@ -55,6 +59,7 @@ type Client struct {
 	token      string
 	botType    string
 	version    string
+	routeTag   string
 	httpClient HTTPDoer
 
 	contextTokens sync.Map // map[userID]contextToken
@@ -105,8 +110,19 @@ func (c *Client) buildHeaders(body []byte) http.Header {
 	h.Set("AuthorizationType", "ilink_bot_token")
 	h.Set("Content-Length", fmt.Sprintf("%d", len(body)))
 	h.Set("X-WECHAT-UIN", randomWechatUIN())
-	if c.token != "" {
-		h.Set("Authorization", "Bearer "+c.token)
+	if t := strings.TrimSpace(c.token); t != "" {
+		h.Set("Authorization", "Bearer "+t)
+	}
+	if c.routeTag != "" {
+		h.Set("SKRouteTag", c.routeTag)
+	}
+	return h
+}
+
+func (c *Client) routeTagHeaders() map[string]string {
+	h := make(map[string]string)
+	if c.routeTag != "" {
+		h["SKRouteTag"] = c.routeTag
 	}
 	return h
 }
@@ -180,12 +196,16 @@ func (c *Client) doGet(ctx context.Context, rawURL string, extraHeaders map[stri
 
 // GetUpdates performs a long-poll request to receive new messages.
 // Returns an empty response (not an error) on client-side timeout.
-func (c *Client) GetUpdates(ctx context.Context, getUpdatesBuf string) (*GetUpdatesResp, error) {
+// Use timeoutMs to override the poll timeout; zero uses the default (35 s).
+func (c *Client) GetUpdates(ctx context.Context, getUpdatesBuf string, timeoutMs ...int64) (*GetUpdatesResp, error) {
 	reqBody := GetUpdatesReq{
 		GetUpdatesBuf: getUpdatesBuf,
 		BaseInfo:      c.buildBaseInfo(),
 	}
-	timeout := defaultLongPollTimeout + 5*time.Second
+	timeout := defaultLongPollTimeout
+	if len(timeoutMs) > 0 && timeoutMs[0] > 0 {
+		timeout = time.Duration(timeoutMs[0]) * time.Millisecond
+	}
 
 	data, err := c.doPost(ctx, "ilink/bot/getupdates", reqBody, timeout)
 	if err != nil {
@@ -213,7 +233,7 @@ func (c *Client) SendMessage(ctx context.Context, msg *SendMessageReq) error {
 // SendText sends a plain text message to a user.
 // contextToken must come from the inbound message's ContextToken field.
 func (c *Client) SendText(ctx context.Context, to, text, contextToken string) (string, error) {
-	clientID := fmt.Sprintf("sdk-%d", time.Now().UnixMilli())
+	clientID := generateClientID()
 	msg := &SendMessageReq{
 		Msg: &WeixinMessage{
 			ToUserID:     to,
