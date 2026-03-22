@@ -237,15 +237,19 @@ func (c *Client) doUpload(ctx context.Context, cdnURL string, body []byte) (stri
 		return "", err
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
 
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
 		errMsg := resp.Header.Get("x-error-message")
+		if errMsg == "" && len(respBody) > 0 {
+			errMsg = string(respBody)
+		}
 		if errMsg == "" {
 			errMsg = fmt.Sprintf("status %d", resp.StatusCode)
 		}
 		return "", &HTTPError{StatusCode: resp.StatusCode, Body: []byte(errMsg)}
 	}
+	io.Copy(io.Discard, resp.Body)
 
 	downloadParam := resp.Header.Get("x-encrypted-param")
 	if downloadParam == "" {

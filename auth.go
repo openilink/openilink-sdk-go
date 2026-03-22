@@ -46,9 +46,13 @@ func (c *Client) PollQRStatus(ctx context.Context, qrcode string) (*QRStatusResp
 	headers := c.routeTagHeaders()
 	headers["iLink-App-ClientVersion"] = "1"
 
-	data, err := c.doGet(ctx, u, headers, qrLongPollTimeout+5*time.Second)
+	data, err := c.doGet(ctx, u, headers, qrLongPollTimeout)
 	if err != nil {
-		if ctx.Err() == nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		// Only treat timeout as a normal "wait"; propagate real errors.
+		if isTimeoutError(err) {
 			return &QRStatusResponse{Status: "wait"}, nil
 		}
 		return nil, err

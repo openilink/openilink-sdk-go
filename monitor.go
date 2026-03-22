@@ -72,6 +72,13 @@ func (c *Client) Monitor(ctx context.Context, handler MessageHandler, opts *Moni
 			continue
 		}
 
+		// Update long-poll timeout if server suggests a new value
+		// (done before error check — server may suggest a new timeout
+		// even on error responses).
+		if resp.LongPollingTimeoutMs > 0 {
+			nextTimeoutMs = resp.LongPollingTimeoutMs
+		}
+
 		// API-level error
 		if resp.Ret != 0 || resp.ErrCode != 0 {
 			apiErr := &APIError{Ret: resp.Ret, ErrCode: resp.ErrCode, ErrMsg: resp.ErrMsg}
@@ -97,11 +104,6 @@ func (c *Client) Monitor(ctx context.Context, handler MessageHandler, opts *Moni
 		}
 
 		failures = 0
-
-		// Update long-poll timeout if server suggests a new value
-		if resp.LongPollingTimeoutMs > 0 {
-			nextTimeoutMs = resp.LongPollingTimeoutMs
-		}
 
 		// Update sync cursor
 		if resp.GetUpdatesBuf != "" {

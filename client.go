@@ -212,8 +212,12 @@ func (c *Client) GetUpdates(ctx context.Context, getUpdatesBuf string, timeoutMs
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		// Client-side timeout is normal for long-poll
-		return &GetUpdatesResp{Ret: 0, GetUpdatesBuf: getUpdatesBuf}, nil
+		// Only treat deadline-exceeded (client-side timeout) as a normal
+		// empty poll; propagate real network errors to the caller.
+		if isTimeoutError(err) {
+			return &GetUpdatesResp{Ret: 0, GetUpdatesBuf: getUpdatesBuf}, nil
+		}
+		return nil, err
 	}
 
 	var resp GetUpdatesResp

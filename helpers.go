@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 )
@@ -29,6 +31,19 @@ func generateClientID() string {
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)
 	return fmt.Sprintf("sdk-%d-%s", time.Now().UnixMilli(), hex.EncodeToString(b))
+}
+
+// isTimeoutError reports whether err is a timeout (deadline exceeded)
+// as opposed to a real network failure.
+func isTimeoutError(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	return false
 }
 
 func sleepCtx(ctx context.Context, d time.Duration) {
