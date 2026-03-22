@@ -29,6 +29,10 @@ type MonitorOptions struct {
 
 	// OnSessionExpired is called when the server returns errcode -14.
 	OnSessionExpired func()
+
+	// OnResponse is called with the full getUpdates response (including
+	// RawResponse()) on every successful poll, before messages are dispatched.
+	OnResponse func(resp *GetUpdatesResp)
 }
 
 // Monitor runs a long-poll loop, invoking handler for each inbound message.
@@ -105,6 +109,10 @@ func (c *Client) Monitor(ctx context.Context, handler MessageHandler, opts *Moni
 		}
 
 		failures = 0
+
+		if opts.OnResponse != nil {
+			opts.OnResponse(resp)
+		}
 
 		// Update sync cursor
 		if resp.GetUpdatesBuf != "" {
