@@ -134,10 +134,22 @@ type ImageItem struct {
 	HDSize      int64     `json:"hd_size,omitempty"`
 }
 
+// VoiceFormat identifies the audio encoding of a voice message.
+type VoiceFormat int
+
+const (
+	VoiceFormatUnknown VoiceFormat = -1
+	VoiceFormatAMR     VoiceFormat = 0
+	VoiceFormatSPEEX   VoiceFormat = 1
+	VoiceFormatMP3     VoiceFormat = 2
+	VoiceFormatWAVE    VoiceFormat = 3
+	VoiceFormatSILK    VoiceFormat = 4
+)
+
 // VoiceItem holds voice message fields.
 type VoiceItem struct {
 	Media         *CDNMedia `json:"media,omitempty"`
-	EncodeType    int       `json:"encode_type,omitempty"`
+	EncodeType    VoiceFormat `json:"encode_type,omitempty"`
 	BitsPerSample int      `json:"bits_per_sample,omitempty"`
 	SampleRate    int       `json:"sample_rate,omitempty"`
 	PlayTime      int       `json:"playtime,omitempty"`
