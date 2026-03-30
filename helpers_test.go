@@ -41,15 +41,17 @@ func TestRandomWechatUIN(t *testing.T) {
 
 func TestGenerateClientID(t *testing.T) {
 	id := generateClientID()
-	if !strings.HasPrefix(id, "sdk-") {
-		t.Errorf("expected prefix sdk-, got %s", id)
+	// Format: openclaw-weixin:timestamp-hex
+	if !strings.HasPrefix(id, "openclaw-weixin:") {
+		t.Errorf("expected prefix openclaw-weixin:, got %s", id)
 	}
-	parts := strings.Split(id, "-")
-	if len(parts) != 3 {
-		t.Errorf("expected 3 parts (sdk-timestamp-hex), got %d: %s", len(parts), id)
+	suffix := strings.TrimPrefix(id, "openclaw-weixin:")
+	parts := strings.Split(suffix, "-")
+	if len(parts) != 2 {
+		t.Errorf("expected 2 parts (timestamp-hex) after prefix, got %d: %s", len(parts), id)
 	}
-	if len(parts[2]) != 8 {
-		t.Errorf("expected 8 hex chars, got %d: %s", len(parts[2]), parts[2])
+	if len(parts) == 2 && len(parts[1]) != 8 {
+		t.Errorf("expected 8 hex chars, got %d: %s", len(parts[1]), parts[1])
 	}
 
 	// Uniqueness

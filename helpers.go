@@ -38,7 +38,7 @@ func randomWechatUIN() string {
 func generateClientID() string {
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)
-	return fmt.Sprintf("sdk-%d-%s", time.Now().UnixMilli(), hex.EncodeToString(b))
+	return fmt.Sprintf("openclaw-weixin:%d-%s", time.Now().UnixMilli(), hex.EncodeToString(b))
 }
 
 // isTimeoutError reports whether err is a timeout (deadline exceeded)
