@@ -56,6 +56,27 @@ func TestFetchQRCode_WithRouteTag(t *testing.T) {
 	}
 }
 
+func TestFetchQRCode_CommonHeaders(t *testing.T) {
+	var gotAppID, gotClientVersion string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAppID = r.Header.Get("iLink-App-Id")
+		gotClientVersion = r.Header.Get("iLink-App-ClientVersion")
+		json.NewEncoder(w).Encode(QRCodeResponse{QRCode: "qr"})
+	}))
+	defer srv.Close()
+
+	c := NewClient("", WithBaseURL(srv.URL), WithAppID("test-app-id"), WithVersion("2.1.3"))
+	c.FetchQRCode(context.Background())
+
+	if gotAppID != "test-app-id" {
+		t.Errorf("iLink-App-Id = %q, want test-app-id", gotAppID)
+	}
+	// 2.1.3 → 2<<16 | 1<<8 | 3 = 131331
+	if gotClientVersion != "131331" {
+		t.Errorf("iLink-App-ClientVersion = %q, want 131331", gotClientVersion)
+	}
+}
+
 func TestPollQRStatus_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.URL.RawQuery, "qrcode=test-qr") {

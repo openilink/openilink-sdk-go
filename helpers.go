@@ -13,6 +13,14 @@ import (
 	"time"
 )
 
+// encodeClientVersion encodes a semver string as uint32: major<<16 | minor<<8 | patch.
+// e.g. "1.0.11" → 0x0001000B = 65547.
+func encodeClientVersion(version string) uint32 {
+	var major, minor, patch int
+	fmt.Sscanf(version, "%d.%d.%d", &major, &minor, &patch)
+	return uint32(major&0xff)<<16 | uint32(minor&0xff)<<8 | uint32(patch&0xff)
+}
+
 func ensureTrailingSlash(u string) string {
 	if strings.HasSuffix(u, "/") {
 		return u

@@ -52,6 +52,9 @@ func WithVersion(v string) Option { return func(c *Client) { c.version = v } }
 // WithRouteTag sets the SKRouteTag header sent with every request.
 func WithRouteTag(tag string) Option { return func(c *Client) { c.routeTag = tag } }
 
+// WithAppID sets the iLink-App-Id header sent with every request.
+func WithAppID(id string) Option { return func(c *Client) { c.appID = id } }
+
 // Client communicates with the Weixin iLink Bot API.
 type Client struct {
 	baseURL     string
@@ -60,6 +63,7 @@ type Client struct {
 	botType     string
 	version     string
 	routeTag    string
+	appID       string
 	httpClient  HTTPDoer
 	silkDecoder SILKDecoder
 
@@ -105,25 +109,27 @@ func (c *Client) buildBaseInfo() *BaseInfo {
 	return &BaseInfo{ChannelVersion: c.version}
 }
 
-func (c *Client) buildHeaders(body []byte) http.Header {
+// commonHeaders returns headers shared by all requests (GET and POST).
+func (c *Client) commonHeaders() http.Header {
 	h := http.Header{}
-	h.Set("Content-Type", "application/json")
-	h.Set("AuthorizationType", "ilink_bot_token")
-	h.Set("Content-Length", fmt.Sprintf("%d", len(body)))
-	h.Set("X-WECHAT-UIN", randomWechatUIN())
-	if t := strings.TrimSpace(c.token); t != "" {
-		h.Set("Authorization", "Bearer "+t)
+	if c.appID != "" {
+		h.Set("iLink-App-Id", c.appID)
 	}
+	h.Set("iLink-App-ClientVersion", fmt.Sprintf("%d", encodeClientVersion(c.version)))
 	if c.routeTag != "" {
 		h.Set("SKRouteTag", c.routeTag)
 	}
 	return h
 }
 
-func (c *Client) routeTagHeaders() map[string]string {
-	h := make(map[string]string)
-	if c.routeTag != "" {
-		h["SKRouteTag"] = c.routeTag
+func (c *Client) buildHeaders(body []byte) http.Header {
+	h := c.commonHeaders()
+	h.Set("Content-Type", "application/json")
+	h.Set("AuthorizationType", "ilink_bot_token")
+	h.Set("Content-Length", fmt.Sprintf("%d", len(body)))
+	h.Set("X-WECHAT-UIN", randomWechatUIN())
+	if t := strings.TrimSpace(c.token); t != "" {
+		h.Set("Authorization", "Bearer "+t)
 	}
 	return h
 }
@@ -174,6 +180,7 @@ func (c *Client) doGet(ctx context.Context, rawURL string, extraHeaders map[stri
 	if err != nil {
 		return nil, fmt.Errorf("ilink: new request: %w", err)
 	}
+	req.Header = c.commonHeaders()
 	for k, v := range extraHeaders {
 		req.Header.Set(k, v)
 	}
