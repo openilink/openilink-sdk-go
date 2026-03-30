@@ -40,7 +40,7 @@ func (c *Client) DownloadVoice(ctx context.Context, voice *VoiceItem) ([]byte, e
 	}
 
 	// 1. Download and decrypt from CDN
-	data, err := c.DownloadFile(ctx, voice.Media.EncryptQueryParam, voice.Media.AESKey)
+	data, err := c.DownloadMedia(ctx, voice.Media)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: download voice: %w", err)
 	}

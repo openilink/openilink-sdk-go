@@ -58,9 +58,6 @@ func TestFetchQRCode_WithRouteTag(t *testing.T) {
 
 func TestPollQRStatus_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("iLink-App-ClientVersion") != "1" {
-			t.Errorf("missing iLink-App-ClientVersion header")
-		}
 		if !strings.Contains(r.URL.RawQuery, "qrcode=test-qr") {
 			t.Errorf("query = %s", r.URL.RawQuery)
 		}
@@ -81,16 +78,62 @@ func TestPollQRStatus_Success(t *testing.T) {
 	}
 }
 
-func TestPollQRStatus_ServerError(t *testing.T) {
+func TestPollQRStatus_ServerError_ReturnsWait(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 	}))
 	defer srv.Close()
 
 	c := NewClient("", WithBaseURL(srv.URL))
-	_, err := c.PollQRStatus(context.Background(), "qr")
-	if err == nil {
-		t.Fatal("expected error on 500")
+	resp, err := c.PollQRStatus(context.Background(), "qr")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Status != "wait" {
+		t.Errorf("status = %q, want wait", resp.Status)
+	}
+}
+
+func TestPollQRStatus_BaseURLOverride(t *testing.T) {
+	var gotHost string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHost = r.Host
+		json.NewEncoder(w).Encode(QRStatusResponse{Status: "wait"})
+	}))
+	defer srv.Close()
+
+	c := NewClient("", WithBaseURL("https://should-not-use.example.com"))
+	resp, err := c.PollQRStatus(context.Background(), "qr", srv.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Status != "wait" {
+		t.Errorf("status = %q", resp.Status)
+	}
+	if gotHost == "" {
+		t.Error("request not received by override server")
+	}
+}
+
+func TestPollQRStatus_RedirectHost(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(QRStatusResponse{
+			Status:       "scaned_but_redirect",
+			RedirectHost: "other.weixin.qq.com",
+		})
+	}))
+	defer srv.Close()
+
+	c := NewClient("", WithBaseURL(srv.URL))
+	resp, err := c.PollQRStatus(context.Background(), "qr")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Status != "scaned_but_redirect" {
+		t.Errorf("status = %q", resp.Status)
+	}
+	if resp.RedirectHost != "other.weixin.qq.com" {
+		t.Errorf("redirect_host = %q", resp.RedirectHost)
 	}
 }
 

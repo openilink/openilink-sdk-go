@@ -184,8 +184,14 @@ func (c *Client) UploadFile(ctx context.Context, plaintext []byte, toUserID stri
 	if uploadResp.Ret != 0 {
 		return nil, &APIError{Ret: uploadResp.Ret, ErrMsg: uploadResp.ErrMsg}
 	}
-	if uploadResp.UploadParam == "" {
-		return nil, fmt.Errorf("ilink: getUploadUrl returned no upload_param")
+	// Prefer upload_full_url; fallback to building from upload_param.
+	var cdnURL string
+	if u := trimString(uploadResp.UploadFullURL); u != "" {
+		cdnURL = u
+	} else if uploadResp.UploadParam != "" {
+		cdnURL = BuildCDNUploadURL(c.cdnBaseURL, uploadResp.UploadParam, filekey)
+	} else {
+		return nil, fmt.Errorf("ilink: getUploadUrl returned no upload URL (need upload_full_url or upload_param)")
 	}
 
 	// 2. Encrypt
@@ -195,7 +201,6 @@ func (c *Client) UploadFile(ctx context.Context, plaintext []byte, toUserID stri
 	}
 
 	// 3. Upload to CDN with retry
-	cdnURL := BuildCDNUploadURL(c.cdnBaseURL, uploadResp.UploadParam, filekey)
 	downloadParam, err := c.uploadToCDN(ctx, cdnURL, ciphertext)
 	if err != nil {
 		return nil, err
@@ -265,20 +270,36 @@ func (c *Client) doUpload(ctx context.Context, cdnURL string, body []byte) (stri
 	return downloadParam, nil
 }
 
-// DownloadFile downloads and decrypts a file from the Weixin CDN.
-// aesKeyBase64 is the aes_key field from CDNMedia (base64-encoded).
-func (c *Client) DownloadFile(ctx context.Context, encryptedQueryParam, aesKeyBase64 string) ([]byte, error) {
-	key, err := ParseAESKey(aesKeyBase64)
+// resolveCDNDownloadURL returns the download URL for a CDNMedia reference.
+// It prefers FullURL when available, falling back to building from EncryptQueryParam.
+func (c *Client) resolveCDNDownloadURL(media *CDNMedia) (string, error) {
+	if media.FullURL != "" {
+		return media.FullURL, nil
+	}
+	if media.EncryptQueryParam != "" {
+		return BuildCDNDownloadURL(c.cdnBaseURL, media.EncryptQueryParam), nil
+	}
+	return "", fmt.Errorf("ilink: cdn media has no full_url or encrypt_query_param")
+}
+
+// DownloadMedia downloads and decrypts media from the CDN using a [CDNMedia] reference.
+// It prefers [CDNMedia.FullURL] when available, falling back to building from EncryptQueryParam.
+func (c *Client) DownloadMedia(ctx context.Context, media *CDNMedia) ([]byte, error) {
+	if media == nil {
+		return nil, fmt.Errorf("ilink: media is nil")
+	}
+	key, err := ParseAESKey(media.AESKey)
 	if err != nil {
 		return nil, err
 	}
-
-	dlURL := BuildCDNDownloadURL(c.cdnBaseURL, encryptedQueryParam)
+	dlURL, err := c.resolveCDNDownloadURL(media)
+	if err != nil {
+		return nil, err
+	}
 	apiResp, err := c.doGet(ctx, dlURL, nil, defaultCDNTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: cdn download: %w", err)
 	}
-
 	plaintext, err := DecryptAESECB(apiResp.Body, key)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: cdn decrypt: %w", err)
@@ -286,14 +307,38 @@ func (c *Client) DownloadFile(ctx context.Context, encryptedQueryParam, aesKeyBa
 	return plaintext, nil
 }
 
-// DownloadRaw downloads raw bytes from the CDN without decryption.
-func (c *Client) DownloadRaw(ctx context.Context, encryptedQueryParam string) ([]byte, error) {
-	dlURL := BuildCDNDownloadURL(c.cdnBaseURL, encryptedQueryParam)
+// DownloadFile downloads and decrypts a file from the Weixin CDN.
+// aesKeyBase64 is the aes_key field from CDNMedia (base64-encoded).
+//
+// Deprecated: Use [Client.DownloadMedia] which supports CDNMedia.FullURL.
+func (c *Client) DownloadFile(ctx context.Context, encryptedQueryParam, aesKeyBase64 string) ([]byte, error) {
+	return c.DownloadMedia(ctx, &CDNMedia{
+		EncryptQueryParam: encryptedQueryParam,
+		AESKey:            aesKeyBase64,
+	})
+}
+
+// DownloadMediaRaw downloads raw bytes from the CDN using a [CDNMedia] reference, without decryption.
+func (c *Client) DownloadMediaRaw(ctx context.Context, media *CDNMedia) ([]byte, error) {
+	if media == nil {
+		return nil, fmt.Errorf("ilink: media is nil")
+	}
+	dlURL, err := c.resolveCDNDownloadURL(media)
+	if err != nil {
+		return nil, err
+	}
 	apiResp, err := c.doGet(ctx, dlURL, nil, defaultCDNTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: cdn download: %w", err)
 	}
 	return apiResp.Body, nil
+}
+
+// DownloadRaw downloads raw bytes from the CDN without decryption.
+//
+// Deprecated: Use [Client.DownloadMediaRaw] which supports CDNMedia.FullURL.
+func (c *Client) DownloadRaw(ctx context.Context, encryptedQueryParam string) ([]byte, error) {
+	return c.DownloadMediaRaw(ctx, &CDNMedia{EncryptQueryParam: encryptedQueryParam})
 }
 
 func randomHex(n int) string {

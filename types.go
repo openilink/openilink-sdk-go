@@ -63,6 +63,9 @@ type GetUploadURLResp struct {
 	ErrMsg           string `json:"errmsg,omitempty"`
 	UploadParam      string `json:"upload_param,omitempty"`
 	ThumbUploadParam string `json:"thumb_upload_param,omitempty"`
+	// UploadFullURL is a complete upload URL returned by the server.
+	// When present, POST directly to this URL instead of building from UploadParam.
+	UploadFullURL string `json:"upload_full_url,omitempty"`
 }
 
 // MessageType distinguishes user messages from bot messages.
@@ -114,6 +117,9 @@ type CDNMedia struct {
 	EncryptQueryParam string `json:"encrypt_query_param,omitempty"`
 	AESKey            string `json:"aes_key,omitempty"`
 	EncryptType       int    `json:"encrypt_type,omitempty"`
+	// FullURL is a complete download URL returned by the server.
+	// When present, use it directly instead of building the URL from EncryptQueryParam.
+	FullURL string `json:"full_url,omitempty"`
 }
 
 // TextItem holds the text content of a message.
@@ -272,11 +278,14 @@ type QRCodeResponse struct {
 // QRStatusResponse is returned when polling QR code scan status.
 type QRStatusResponse struct {
 	rawResponse
-	Status      string `json:"status"` // wait, scaned, confirmed, expired
+	Status      string `json:"status"` // wait, scaned, confirmed, expired, scaned_but_redirect
 	BotToken    string `json:"bot_token,omitempty"`
 	ILinkBotID  string `json:"ilink_bot_id,omitempty"`
 	BaseURL     string `json:"baseurl,omitempty"`
 	ILinkUserID string `json:"ilink_user_id,omitempty"`
+	// RedirectHost is set when Status is "scaned_but_redirect".
+	// Switch polling to https://<RedirectHost> for subsequent status requests.
+	RedirectHost string `json:"redirect_host,omitempty"`
 }
 
 // LoginResult holds the outcome of a QR login flow.

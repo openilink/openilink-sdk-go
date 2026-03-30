@@ -46,6 +46,10 @@ func isTimeoutError(err error) bool {
 	return false
 }
 
+func trimString(s string) string {
+	return strings.TrimSpace(s)
+}
+
 func sleepCtx(ctx context.Context, d time.Duration) {
 	select {
 	case <-ctx.Done():

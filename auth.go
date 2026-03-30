@@ -39,23 +39,26 @@ func (c *Client) FetchQRCode(ctx context.Context) (*QRCodeResponse, error) {
 }
 
 // PollQRStatus polls the scan status of a QR code.
-func (c *Client) PollQRStatus(ctx context.Context, qrcode string) (*QRStatusResponse, error) {
-	base := ensureTrailingSlash(c.baseURL)
+// baseURL overrides the polling endpoint; pass empty to use the client's base URL.
+func (c *Client) PollQRStatus(ctx context.Context, qrcode string, baseURL ...string) (*QRStatusResponse, error) {
+	base := c.baseURL
+	if len(baseURL) > 0 && baseURL[0] != "" {
+		base = baseURL[0]
+	}
+	base = ensureTrailingSlash(base)
 	u, _ := url.JoinPath(base, "ilink/bot/get_qrcode_status")
 	u += "?qrcode=" + url.QueryEscape(qrcode)
 
 	headers := c.routeTagHeaders()
-	headers["iLink-App-ClientVersion"] = "1"
 
 	apiResp, err := c.doGet(ctx, u, headers, qrLongPollTimeout)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		if isTimeoutError(err) {
-			return &QRStatusResponse{Status: "wait"}, nil
-		}
-		return nil, err
+		// Timeouts and network errors (gateway 524, connection refused, etc.)
+		// are normal during long-poll; return "wait" so the caller retries.
+		return &QRStatusResponse{Status: "wait"}, nil
 	}
 
 	var resp QRStatusResponse
@@ -100,6 +103,7 @@ func (c *Client) LoginWithQR(ctx context.Context, cb *LoginCallbacks) (*LoginRes
 	scannedNotified := false
 	refreshCount := 1
 	currentQR := qr.QRCode
+	pollBaseURL := "" // empty = use client's default base URL
 
 	for {
 		select {
@@ -108,7 +112,7 @@ func (c *Client) LoginWithQR(ctx context.Context, cb *LoginCallbacks) (*LoginRes
 		default:
 		}
 
-		status, err := c.PollQRStatus(ctx, currentQR)
+		status, err := c.PollQRStatus(ctx, currentQR, pollBaseURL)
 		if err != nil {
 			return nil, fmt.Errorf("ilink: poll QR status: %w", err)
 		}
@@ -123,6 +127,11 @@ func (c *Client) LoginWithQR(ctx context.Context, cb *LoginCallbacks) (*LoginRes
 				if cb.OnScanned != nil {
 					cb.OnScanned()
 				}
+			}
+
+		case "scaned_but_redirect":
+			if status.RedirectHost != "" {
+				pollBaseURL = "https://" + status.RedirectHost
 			}
 
 		case "expired":
