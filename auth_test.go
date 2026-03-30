@@ -65,15 +65,15 @@ func TestFetchQRCode_CommonHeaders(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient("", WithBaseURL(srv.URL), WithAppID("test-app-id"), WithVersion("2.1.3"))
+	c := NewClient("", WithBaseURL(srv.URL))
 	c.FetchQRCode(context.Background())
 
-	if gotAppID != "test-app-id" {
-		t.Errorf("iLink-App-Id = %q, want test-app-id", gotAppID)
+	if gotAppID != "bot" {
+		t.Errorf("iLink-App-Id = %q, want bot", gotAppID)
 	}
-	// 2.1.3 → 2<<16 | 1<<8 | 3 = 131331
-	if gotClientVersion != "131331" {
-		t.Errorf("iLink-App-ClientVersion = %q, want 131331", gotClientVersion)
+	// iLinkChannelVersion "2.1.1" → 2<<16 | 1<<8 | 1 = 131329
+	if gotClientVersion != "131329" {
+		t.Errorf("iLink-App-ClientVersion = %q, want 131329", gotClientVersion)
 	}
 }
 

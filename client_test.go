@@ -25,8 +25,8 @@ func TestNewClient_Defaults(t *testing.T) {
 	if c.botType != DefaultBotType {
 		t.Errorf("botType = %q, want %q", c.botType, DefaultBotType)
 	}
-	if c.version != "1.0.2" {
-		t.Errorf("version = %q, want %q", c.version, "1.0.2")
+	if c.version != iLinkChannelVersion {
+		t.Errorf("version = %q, want %q", c.version, iLinkChannelVersion)
 	}
 }
 
@@ -232,7 +232,7 @@ func TestSendText_Success(t *testing.T) {
 	if len(received.Msg.ItemList) != 1 || received.Msg.ItemList[0].TextItem.Text != "hello world" {
 		t.Error("text item mismatch")
 	}
-	if received.BaseInfo == nil || received.BaseInfo.ChannelVersion != "1.0.2" {
+	if received.BaseInfo == nil || received.BaseInfo.ChannelVersion != iLinkChannelVersion {
 		t.Error("base_info missing or wrong version")
 	}
 }

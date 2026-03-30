@@ -21,6 +21,11 @@ const (
 	// DefaultBotType is the default bot_type parameter for QR login.
 	DefaultBotType = "3"
 
+	// iLinkAppID matches the ilink_appid field from the upstream openclaw-weixin package.json.
+	iLinkAppID = "bot"
+	// iLinkChannelVersion tracks the upstream openclaw-weixin version we are compatible with.
+	iLinkChannelVersion = "2.1.1"
+
 	defaultLongPollTimeout = 35 * time.Second
 	defaultAPITimeout      = 15 * time.Second
 	defaultConfigTimeout   = 10 * time.Second
@@ -52,9 +57,6 @@ func WithVersion(v string) Option { return func(c *Client) { c.version = v } }
 // WithRouteTag sets the SKRouteTag header sent with every request.
 func WithRouteTag(tag string) Option { return func(c *Client) { c.routeTag = tag } }
 
-// WithAppID sets the iLink-App-Id header sent with every request.
-func WithAppID(id string) Option { return func(c *Client) { c.appID = id } }
-
 // Client communicates with the Weixin iLink Bot API.
 type Client struct {
 	baseURL     string
@@ -63,7 +65,6 @@ type Client struct {
 	botType     string
 	version     string
 	routeTag    string
-	appID       string
 	httpClient  HTTPDoer
 	silkDecoder SILKDecoder
 
@@ -84,7 +85,7 @@ func NewClient(token string, opts ...Option) *Client {
 		cdnBaseURL: DefaultCDNBaseURL,
 		token:      token,
 		botType:    DefaultBotType,
-		version:    "1.0.2",
+		version:    iLinkChannelVersion,
 		httpClient: &http.Client{},
 	}
 	for _, opt := range opts {
@@ -112,9 +113,7 @@ func (c *Client) buildBaseInfo() *BaseInfo {
 // commonHeaders returns headers shared by all requests (GET and POST).
 func (c *Client) commonHeaders() http.Header {
 	h := http.Header{}
-	if c.appID != "" {
-		h.Set("iLink-App-Id", c.appID)
-	}
+	h.Set("iLink-App-Id", iLinkAppID)
 	h.Set("iLink-App-ClientVersion", fmt.Sprintf("%d", encodeClientVersion(c.version)))
 	if c.routeTag != "" {
 		h.Set("SKRouteTag", c.routeTag)
