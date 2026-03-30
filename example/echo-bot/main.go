@@ -39,7 +39,7 @@ func main() {
 
 	// --- Typing ticket cache (per-user) ---
 
-	typingTickets := map[string]string{} // userID → ticket
+	typingTickets := map[string]string{}
 
 	fetchTypingTicket := func(ctx context.Context, userID, contextToken string) string {
 		if t, ok := typingTickets[userID]; ok {
@@ -62,36 +62,80 @@ func main() {
 	fmt.Println("Listening for messages... (Ctrl+C to quit)")
 	err = client.Monitor(ctx, func(msg ilink.WeixinMessage) {
 		from := msg.FromUserID
+		token := msg.ContextToken
 
-		// Typing indicator
-		if ticket := fetchTypingTicket(ctx, from, msg.ContextToken); ticket != "" {
+		// Send typing indicator, cancel after reply
+		if ticket := fetchTypingTicket(ctx, from, token); ticket != "" {
 			_ = client.SendTyping(ctx, from, ticket, ilink.Typing)
 			defer client.SendTyping(ctx, from, ticket, ilink.CancelTyping)
 		}
 
-		// Echo images back
+		// Handle media messages: download and echo back
 		for _, item := range msg.ItemList {
-			if item.Type == ilink.ItemImage && item.ImageItem != nil && item.ImageItem.Media != nil {
-				data, err := client.DownloadMedia(ctx, item.ImageItem.Media)
-				if err != nil {
-					log.Printf("Download image failed: %v", err)
+			switch item.Type {
+			case ilink.ItemImage:
+				if item.ImageItem == nil || item.ImageItem.Media == nil {
 					continue
 				}
-				if err := client.SendMediaFile(ctx, from, msg.ContextToken, data, "echo.png", ""); err != nil {
-					log.Printf("Send image failed: %v", err)
+				data, err := client.DownloadMedia(ctx, item.ImageItem.Media)
+				if err != nil {
+					log.Printf("Download image: %v", err)
+					continue
 				}
+				_ = client.SendMediaFile(ctx, from, token, data, "echo.png", "")
+				return
+
+			case ilink.ItemVideo:
+				if item.VideoItem == nil || item.VideoItem.Media == nil {
+					continue
+				}
+				data, err := client.DownloadMedia(ctx, item.VideoItem.Media)
+				if err != nil {
+					log.Printf("Download video: %v", err)
+					continue
+				}
+				_ = client.SendMediaFile(ctx, from, token, data, "echo.mp4", "")
+				return
+
+			case ilink.ItemFile:
+				if item.FileItem == nil || item.FileItem.Media == nil {
+					continue
+				}
+				data, err := client.DownloadMedia(ctx, item.FileItem.Media)
+				if err != nil {
+					log.Printf("Download file: %v", err)
+					continue
+				}
+				name := item.FileItem.FileName
+				if name == "" {
+					name = "echo.bin"
+				}
+				_ = client.SendMediaFile(ctx, from, token, data, name, "")
+				return
+
+			case ilink.ItemVoice:
+				if item.VoiceItem == nil || item.VoiceItem.Media == nil {
+					continue
+				}
+				// Voice without SILK decoder: echo as raw download
+				data, err := client.DownloadMedia(ctx, item.VoiceItem.Media)
+				if err != nil {
+					log.Printf("Download voice: %v", err)
+					continue
+				}
+				_ = client.SendMediaFile(ctx, from, token, data, "echo.silk", "")
 				return
 			}
 		}
 
-		// Echo text
+		// Handle text messages
 		text := ilink.ExtractText(&msg)
 		if text == "" {
 			return
 		}
 		fmt.Printf("[%s] %s\n", from, text)
 
-		if _, err := client.Push(ctx, from, "echo: "+text); err != nil {
+		if _, err := client.SendText(ctx, from, "echo: "+text, token); err != nil {
 			log.Printf("Reply failed: %v", err)
 		}
 	}, &ilink.MonitorOptions{
