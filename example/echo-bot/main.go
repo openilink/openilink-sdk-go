@@ -117,13 +117,18 @@ func main() {
 				if item.VoiceItem == nil || item.VoiceItem.Media == nil {
 					continue
 				}
-				// Voice without SILK decoder: echo as raw download
-				data, err := client.DownloadMedia(ctx, item.VoiceItem.Media)
-				if err != nil {
-					log.Printf("Download voice: %v", err)
-					continue
+				// Try DownloadVoice (SILK→WAV); fallback to raw if no decoder configured
+				wav, err := client.DownloadVoice(ctx, item.VoiceItem)
+				if err == nil {
+					_ = client.SendMediaFile(ctx, from, token, wav, "echo.wav", "")
+				} else {
+					data, err := client.DownloadMedia(ctx, item.VoiceItem.Media)
+					if err != nil {
+						log.Printf("Download voice: %v", err)
+						continue
+					}
+					_ = client.SendMediaFile(ctx, from, token, data, "echo.silk", "")
 				}
-				_ = client.SendMediaFile(ctx, from, token, data, "echo.silk", "")
 				return
 			}
 		}
