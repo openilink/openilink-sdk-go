@@ -145,13 +145,11 @@ client.SendFileAttachment(ctx, userID, contextToken, "report.pdf", uploaded)
 for _, item := range msg.ItemList {
     switch item.Type {
     case ilink.ItemImage:
-        data, _ := client.DownloadFile(ctx,
-            item.ImageItem.Media.EncryptQueryParam,
-            item.ImageItem.Media.AESKey)
+        data, _ := client.DownloadMedia(ctx, item.ImageItem.Media)
 
     case ilink.ItemVoice:
         // 需要配置 WithSILKDecoder
-        wav, _ := client.DownloadVoice(ctx, item.VoiceItem.Media)
+        wav, _ := client.DownloadVoice(ctx, item.VoiceItem)
     }
 }
 ```
@@ -170,7 +168,7 @@ client := ilink.NewClient(token, ilink.WithSILKDecoder(
     },
 ))
 
-wav, err := client.DownloadVoice(ctx, voiceItem.Media) // 返回 WAV 文件字节
+wav, err := client.DownloadVoice(ctx, voiceItem) // 返回 WAV 文件字节
 ```
 
 也可以单独使用 WAV 封装：
