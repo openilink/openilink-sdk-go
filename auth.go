@@ -38,6 +38,7 @@ func (c *Client) FetchQRCode(ctx context.Context) (*QRCodeResponse, error) {
 }
 
 // PollQRStatus polls the scan status of a QR code.
+// PollQRStatus polls the scan status of a QR code.
 // baseURL overrides the polling endpoint; pass empty to use the client's base URL.
 func (c *Client) PollQRStatus(ctx context.Context, qrcode string, baseURL ...string) (*QRStatusResponse, error) {
 	base := c.baseURL
@@ -89,7 +90,15 @@ func (c *Client) LoginWithQR(ctx context.Context, cb *LoginCallbacks) (*LoginRes
 	ctx, cancel := context.WithTimeout(ctx, defaultLoginTimeout)
 	defer cancel()
 
+	// QR requests use loginBaseURL (set at construction time via WithBaseURL,
+	// defaults to DefaultBaseURL). This is NOT affected by SetBaseURL calls
+	// from a prior login, so re-login always reaches the QR service.
+	qrBaseURL := c.loginBaseURL
+
+	savedBaseURL := c.baseURL
+	c.baseURL = qrBaseURL
 	qr, err := c.FetchQRCode(ctx)
+	c.baseURL = savedBaseURL
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +109,7 @@ func (c *Client) LoginWithQR(ctx context.Context, cb *LoginCallbacks) (*LoginRes
 	scannedNotified := false
 	refreshCount := 1
 	currentQR := qr.QRCode
-	pollBaseURL := "" // empty = use client's default base URL
+	pollBaseURL := qrBaseURL
 
 	for {
 		select {
@@ -139,7 +148,9 @@ func (c *Client) LoginWithQR(ctx context.Context, cb *LoginCallbacks) (*LoginRes
 			if cb.OnExpired != nil {
 				cb.OnExpired(refreshCount, maxQRRefreshCount)
 			}
+			c.baseURL = qrBaseURL
 			newQR, err := c.FetchQRCode(ctx)
+			c.baseURL = savedBaseURL
 			if err != nil {
 				return nil, fmt.Errorf("ilink: refresh QR code: %w", err)
 			}

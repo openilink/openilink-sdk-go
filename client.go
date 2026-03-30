@@ -40,7 +40,12 @@ type HTTPDoer interface {
 type Option func(*Client)
 
 // WithBaseURL overrides the API base URL.
-func WithBaseURL(url string) Option { return func(c *Client) { c.baseURL = url } }
+// This also sets the QR login base URL; in production the QR login
+// endpoint is always [DefaultBaseURL] and [Client.LoginWithQR] uses
+// the value set at construction time, not whatever the server returns.
+func WithBaseURL(url string) Option {
+	return func(c *Client) { c.baseURL = url; c.loginBaseURL = url }
+}
 
 // WithCDNBaseURL overrides the CDN base URL for media uploads.
 func WithCDNBaseURL(url string) Option { return func(c *Client) { c.cdnBaseURL = url } }
@@ -59,14 +64,15 @@ func WithRouteTag(tag string) Option { return func(c *Client) { c.routeTag = tag
 
 // Client communicates with the Weixin iLink Bot API.
 type Client struct {
-	baseURL     string
-	cdnBaseURL  string
-	token       string
-	botType     string
-	version     string
-	routeTag    string
-	httpClient  HTTPDoer
-	silkDecoder SILKDecoder
+	baseURL      string
+	cdnBaseURL   string
+	loginBaseURL string // fixed base URL for QR login; defaults to DefaultBaseURL
+	token        string
+	botType      string
+	version      string
+	routeTag     string
+	httpClient   HTTPDoer
+	silkDecoder  SILKDecoder
 
 	contextTokens sync.Map // map[userID]contextToken
 }
@@ -81,12 +87,13 @@ type Client struct {
 //	)
 func NewClient(token string, opts ...Option) *Client {
 	c := &Client{
-		baseURL:    DefaultBaseURL,
-		cdnBaseURL: DefaultCDNBaseURL,
-		token:      token,
-		botType:    DefaultBotType,
-		version:    iLinkChannelVersion,
-		httpClient: &http.Client{},
+		baseURL:      DefaultBaseURL,
+		cdnBaseURL:   DefaultCDNBaseURL,
+		loginBaseURL: DefaultBaseURL,
+		token:        token,
+		botType:      DefaultBotType,
+		version:      iLinkChannelVersion,
+		httpClient:   &http.Client{},
 	}
 	for _, opt := range opts {
 		opt(c)
