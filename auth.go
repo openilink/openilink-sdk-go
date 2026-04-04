@@ -24,7 +24,7 @@ func (c *Client) FetchQRCode(ctx context.Context) (*QRCodeResponse, error) {
 	u, _ := url.JoinPath(base, "ilink/bot/get_bot_qrcode")
 	u += "?bot_type=" + url.QueryEscape(botType)
 
-	apiResp, err := c.doGet(ctx, u, nil, 5*time.Second)
+	apiResp, err := c.doGet(ctx, u, nil, 0)
 	if err != nil {
 		return nil, fmt.Errorf("ilink: fetch QR code: %w", err)
 	}

@@ -24,7 +24,7 @@ const (
 	// iLinkAppID matches the ilink_appid field from the upstream openclaw-weixin package.json.
 	iLinkAppID = "bot"
 	// iLinkChannelVersion tracks the upstream openclaw-weixin version we are compatible with.
-	iLinkChannelVersion = "2.1.1"
+	iLinkChannelVersion = "2.1.6"
 
 	defaultLongPollTimeout = 35 * time.Second
 	defaultAPITimeout      = 15 * time.Second
@@ -179,8 +179,11 @@ func (c *Client) doPost(ctx context.Context, endpoint string, body any, timeout 
 }
 
 func (c *Client) doGet(ctx context.Context, rawURL string, extraHeaders map[string]string, timeout time.Duration) (*APIResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {

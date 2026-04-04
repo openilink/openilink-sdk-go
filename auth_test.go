@@ -71,9 +71,9 @@ func TestFetchQRCode_CommonHeaders(t *testing.T) {
 	if gotAppID != "bot" {
 		t.Errorf("iLink-App-Id = %q, want bot", gotAppID)
 	}
-	// iLinkChannelVersion "2.1.1" → 2<<16 | 1<<8 | 1 = 131329
-	if gotClientVersion != "131329" {
-		t.Errorf("iLink-App-ClientVersion = %q, want 131329", gotClientVersion)
+	// iLinkChannelVersion "2.1.6" → 2<<16 | 1<<8 | 6 = 131334
+	if gotClientVersion != "131334" {
+		t.Errorf("iLink-App-ClientVersion = %q, want 131334", gotClientVersion)
 	}
 }
 
