@@ -1,6 +1,7 @@
 package ilink
 
 import (
+	"os"
 	"context"
 	"encoding/json"
 	"errors"
@@ -293,3 +294,37 @@ func TestSendText_FromUserIDAlwaysSent(t *testing.T) {
 		t.Error("from_user_id should always be present in JSON")
 	}
 }
+
+func TestNewClient_ILINK_CHANNEL_VERSION_EnvOverride(t *testing.T) {
+	// Temporarily set the env var
+	orig := os.Getenv("ILINK_CHANNEL_VERSION")
+	os.Setenv("ILINK_CHANNEL_VERSION", "99.99.99")
+	defer func() {
+		if orig == "" {
+			os.Unsetenv("ILINK_CHANNEL_VERSION")
+		} else {
+			os.Setenv("ILINK_CHANNEL_VERSION", orig)
+		}
+	}()
+
+	c := NewClient("tok")
+	if c.version != "99.99.99" {
+		t.Errorf("version = %q, want env override value %q", c.version, "99.99.99")
+	}
+}
+
+func TestNewClient_ILINK_CHANNEL_VERSION_EnvEmpty(t *testing.T) {
+	orig := os.Getenv("ILINK_CHANNEL_VERSION")
+	os.Unsetenv("ILINK_CHANNEL_VERSION")
+	defer func() {
+		if orig != "" {
+			os.Setenv("ILINK_CHANNEL_VERSION", orig)
+		}
+	}()
+
+	c := NewClient("tok")
+	if c.version != iLinkChannelVersion {
+		t.Errorf("version = %q, want default %q", c.version, iLinkChannelVersion)
+	}
+}
+
