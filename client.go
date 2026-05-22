@@ -1,6 +1,8 @@
 package ilink
 
 import (
+	"os"
+
 	"bytes"
 	"context"
 	"encoding/json"
@@ -24,7 +26,7 @@ const (
 	// iLinkAppID matches the ilink_appid field from the upstream openclaw-weixin package.json.
 	iLinkAppID = "bot"
 	// iLinkChannelVersion tracks the upstream openclaw-weixin version we are compatible with.
-	iLinkChannelVersion = "2.1.6"
+	iLinkChannelVersion = "2.4.3"
 
 	defaultLongPollTimeout = 35 * time.Second
 	defaultAPITimeout      = 15 * time.Second
@@ -94,6 +96,12 @@ func NewClient(token string, opts ...Option) *Client {
 		botType:      DefaultBotType,
 		version:      iLinkChannelVersion,
 		httpClient:   &http.Client{},
+	}
+	// Allow ILINK_CHANNEL_VERSION env var to override the default channel version.
+	// This is useful for testing against a newer protocol version without
+	// recompiling, or for hot-fixing compatibility when the upstream plugin advances.
+	if v := os.Getenv("ILINK_CHANNEL_VERSION"); v != "" {
+		c.version = v
 	}
 	for _, opt := range opts {
 		opt(c)
